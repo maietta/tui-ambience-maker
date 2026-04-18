@@ -34,10 +34,10 @@ Download the latest release for your platform:
 
 | Platform | Stable | Nightly |
 |----------|--------|---------|
-| Linux x64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
-| Windows x64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
-| macOS ARM64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
-| macOS x64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
+| Linux x64 | [Download](https://github.com/maietta/tui-ambience-maker/releases/latest) | [Download](https://github.com/maietta/tui-ambience-maker/releases/tag/nightly) |
+| Windows x64 | [Download](https://github.com/maietta/tui-ambience-maker/releases/latest) | [Download](https://github.com/maietta/tui-ambience-maker/releases/tag/nightly) |
+| macOS ARM64 | [Download](https://github.com/maietta/tui-ambience-maker/releases/latest) | [Download](https://github.com/maietta/tui-ambience-maker/releases/tag/nightly) |
+| macOS x64 | [Download](https://github.com/maietta/tui-ambience-maker/releases/latest) | [Download](https://github.com/maietta/tui-ambience-maker/releases/tag/nightly) |
 
 ### Installation
 
@@ -237,13 +237,13 @@ This project uses GitHub Actions to automatically build and release binaries:
 - **Trigger**: Git tags (e.g., `v1.2.3`)
 - **Frequency**: Manual, when ready
 - **Quality**: Production-ready, tested
-- **Download**: [Latest Stable](https://github.com/OWNER/REPO/releases/latest)
+- **Download**: [Latest Stable](https://github.com/maietta/tui-ambience-maker/releases/latest)
 
 ### Nightly Builds
 - **Trigger**: Every push to `main` + daily at 2 AM UTC
 - **Frequency**: Automatic, continuous
 - **Quality**: Development, may have bugs
-- **Download**: [Nightly Build](https://github.com/OWNER/REPO/releases/tag/nightly)
+- **Download**: [Nightly Build](https://github.com/maietta/tui-ambience-maker/releases/tag/nightly)
 
 ### Creating a Release
 

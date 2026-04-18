@@ -101,12 +101,12 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ### Nightly
 - Download: GitHub Releases → "🌙 Nightly Build"
-- URL: `https://github.com/OWNER/REPO/releases/tag/nightly`
+- URL: `https://github.com/maietta/tui-ambience-maker/releases/tag/nightly`
 - Updated: Continuously on every push to main
 
 ### Stable
 - Download: GitHub Releases → Latest
-- URL: `https://github.com/OWNER/REPO/releases/latest`
+- URL: `https://github.com/maietta/tui-ambience-maker/releases/latest`
 - Permanent: Never deleted
 
 ## Cross-Platform Builds
