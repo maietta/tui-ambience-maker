@@ -1,11 +1,24 @@
 node_modules/
 dist/
+dist-binary/
 *.log
 .DS_Store
 *.zip
+*.tar.gz
 .env
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Compiled binaries
+omarchy-theme-tui
+omarchy-theme-tui-linux
+omarchy-theme-tui-macos
+omarchy-theme-tui.exe
+yoga.wasm
+
+# OS files
+Thumbs.db
+desktop.ini

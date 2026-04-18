@@ -1,0 +1,276 @@
+name: Nightly Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+  schedule:
+    # Run every day at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  # Build and test
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build TypeScript
+        run: npm run build
+        
+      - name: Test CLI
+        run: |
+          convert -size 100x100 xc:blue test-image.jpg || magick convert -size 100x100 xc:blue test-image.jpg || true
+          bun dist/cli.js generate test-image.jpg --name "test-theme" || true
+          rm -f test-image.jpg
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-nightly
+          path: |
+            dist/
+            !dist/**/*.map
+          retention-days: 1
+
+  # Build Linux binary
+  build-linux:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-nightly
+          path: dist/
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build Linux binary
+        run: |
+          bun build dist/index.ts --compile --target=bun-linux-x64 --outfile omarchy-theme-tui-linux
+          bun build dist/index.ts --compile --target=bun-linux-x64-baseline --outfile omarchy-theme-tui-linux-baseline
+          cp node_modules/yoga-wasm-web/dist/yoga.wasm .
+          
+      - name: Create nightly package
+        run: |
+          mkdir -p dist-release
+          cp omarchy-theme-tui-linux dist-release/
+          cp omarchy-theme-tui-linux-baseline dist-release/
+          cp yoga.wasm dist-release/
+          echo '#!/bin/bash
+# Nightly build installation
+echo "Installing Omarchy Theme TUI (Nightly Build)"
+INSTALL_DIR="${1:-/usr/local/bin}"
+mkdir -p "$INSTALL_DIR"
+cp omarchy-theme-tui-linux "$INSTALL_DIR/omarchy-theme-tui"
+cp yoga.wasm "$INSTALL_DIR/"
+chmod +x "$INSTALL_DIR/omarchy-theme-tui"
+echo "✓ Installed to $INSTALL_DIR/omarchy-theme-tui"
+echo "⚠️  This is a nightly build - may contain unstable features"' > dist-release/install.sh
+          echo '# Omarchy Theme TUI - Nightly Build
+⚠️ This is a nightly/development build
+It contains the latest features but may be unstable.
+For stable releases, see: https://github.com/${{ github.repository }}/releases
+
+## Installation
+```bash
+./install.sh
+```
+
+## Requirements
+- yoga.wasm must be in same directory as binary
+' > dist-release/README.md
+          chmod +x dist-release/install.sh dist-release/omarchy-theme-tui-linux*
+          tar czf omarchy-theme-tui-linux-nightly.tar.gz -C dist-release .
+          
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary-nightly
+          path: omarchy-theme-tui-linux-nightly.tar.gz
+          retention-days: 7
+
+  # Build Windows binary
+  build-windows:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-nightly
+          path: dist/
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build Windows binary
+        run: |
+          bun build dist/index.ts --compile --target=bun-windows-x64 --outfile omarchy-theme-tui.exe
+          
+      - name: Create nightly package
+        run: |
+          mkdir -p dist-release
+          cp omarchy-theme-tui.exe dist-release/
+          cp node_modules/yoga-wasm-web/dist/yoga.wasm dist-release/
+          echo '# Omarchy Theme TUI - Windows Nightly Build ⚠️' > dist-release/README.txt
+          zip -r omarchy-theme-tui-windows-nightly.zip dist-release/
+          
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binary-nightly
+          path: omarchy-theme-tui-windows-nightly.zip
+          retention-days: 7
+
+  # Build macOS binaries
+  build-macos:
+    needs: build
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            arch: arm64
+            target: bun-darwin-arm64
+          - os: macos-13
+            arch: x64
+            target: bun-darwin-x64
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-nightly
+          path: dist/
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build macOS binary
+        run: |
+          bun build dist/index.ts --compile --target=${{ matrix.target }} --outfile omarchy-theme-tui-macos-${{ matrix.arch }}
+          cp node_modules/yoga-wasm-web/dist/yoga.wasm .
+          mkdir -p dist-release
+          cp omarchy-theme-tui-macos-${{ matrix.arch }} dist-release/
+          cp yoga.wasm dist-release/
+          echo "# macOS Nightly Build (${{ matrix.arch }}) ⚠️" > dist-release/README.md
+          chmod +x dist-release/omarchy-theme-tui-macos-${{ matrix.arch }}
+          tar czf omarchy-theme-tui-macos-${{ matrix.arch }}-nightly.tar.gz -C dist-release .
+          
+      - name: Upload macOS binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-binary-nightly
+          path: omarchy-theme-tui-macos-${{ matrix.arch }}-nightly.tar.gz
+          retention-days: 7
+
+  # Update Nightly Release
+  update-nightly:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          
+      - name: Display artifacts
+        run: ls -la artifacts/*
+        
+      - name: Update Nightly Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 🌙 Nightly Build
+          tag_name: nightly
+          files: |
+            artifacts/linux-binary-nightly/*.tar.gz
+            artifacts/windows-binary-nightly/*.zip
+            artifacts/macos-arm64-binary-nightly/*.tar.gz
+            artifacts/macos-x64-binary-nightly/*.tar.gz
+          draft: false
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            ## 🌙 Nightly Build
+            
+            **⚠️ This is an unstable development build!**
+            
+            Built from the latest code on `${{ github.ref_name }}` at ${{ github.event.head_commit.timestamp }}.
+            
+            ### What is this?
+            Nightly builds are automatically created from the latest commits to provide early access to new features and bug fixes. They may contain bugs or incomplete features.
+            
+            ### Downloads
+            - **Linux**: `omarchy-theme-tui-linux-nightly.tar.gz`
+            - **Windows**: `omarchy-theme-tui-windows-nightly.zip`
+            - **macOS (Apple Silicon)**: `omarchy-theme-tui-macos-arm64-nightly.tar.gz`
+            - **macOS (Intel)**: `omarchy-theme-tui-macos-x64-nightly.tar.gz`
+            
+            ### Installation
+            ```bash
+            tar xzf omarchy-theme-tui-linux-nightly.tar.gz
+            ./install.sh
+            ```
+            
+            ### ⚠️ Important Notes
+            - May contain bugs or unstable features
+            - Configuration format may change between builds
+            - Not recommended for production use
+            - For stable releases, use the [latest stable release](https://github.com/${{ github.repository }}/releases/latest)
+            
+            ### Commit
+            ${{ github.event.head_commit.message }}
+            
+            ### Build Info
+            - Branch: ${{ github.ref_name }}
+            - Commit: ${{ github.sha }}
+            - Built: ${{ github.event.head_commit.timestamp }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

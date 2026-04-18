@@ -46,9 +46,10 @@
     "asciify-image": "^0.1.10",
     "commander": "^11.1.0",
     "ink": "^4.4.1",
+    "jimp": "^1.6.1",
     "jszip": "^3.10.1",
     "react": "^18.2.0",
-    "sharp": "^0.33.0"
+    "react-devtools-core": "^7.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

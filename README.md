@@ -2,6 +2,18 @@
 
 A terminal user interface application for generating Omarchy themes from images. Inspired by https://theme.no-signal.uk/
 
+## Motivation & Context
+
+This project started as a vibe-coding experiment to replicate the functionality of the [Omarchy Theme Generator](https://theme.no-signal.uk/) web app, but as a standalone TUI tool.
+
+**However, there's a bigger picture here:**
+
+I'm working on a larger project that builds upon Omarchy's beautiful, opinionated configuration approach, but with a heavy emphasis on **container and VM-based isolation** for all applications and services - similar to [Qubes OS](https://www.qubes-os.org/). Think of it as Omarchy's aesthetic meets Qubes' security model.
+
+This theme generator utility will be a nice addition to that ecosystem, allowing users to easily create cohesive visual themes that work across isolated environments. Right now, this is a **proof of concept and work in progress** - expect things to break, change, or occasionally achieve sentience and judge your wallpaper choices.
+
+Stay tuned for the bigger project... or don't. Either way, enjoy generating pretty colors!
+
 ## Features
 
 - 🎨 Generate themes from any image
@@ -13,23 +25,35 @@ A terminal user interface application for generating Omarchy themes from images.
 - 🔧 OKLCH perceptual color space
 - 🎨 6 ANSI color slot mapping with bright variants
 - 🪟 Desktop preview mockup
+- 🖼️ ASCII image preview in file browser
+- 🚀 Standalone binary - no dependencies needed!
 
-## Installation
+## Quick Start (Binary)
+
+Download the latest release for your platform:
+
+| Platform | Stable | Nightly |
+|----------|--------|---------|
+| Linux x64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
+| Windows x64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
+| macOS ARM64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
+| macOS x64 | [Download](https://github.com/OWNER/REPO/releases/latest) | [Download](https://github.com/OWNER/REPO/releases/tag/nightly) |
+
+### Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd omarchy-theme-tui
+# Download and extract
+tar xzf omarchy-theme-tui-linux.tar.gz  # Linux/macOS
+# or unzip omarchy-theme-tui-windows.zip  # Windows
 
-# Install dependencies
-npm install
+# Run directly
+./omarchy-theme-tui
 
-# Build TypeScript
-npm run build
-
-# Install globally (optional)
-npm link
+# Or install system-wide
+./install.sh
 ```
+
+**⚠️ Important:** The `yoga.wasm` file must be in the same directory as the binary.
 
 ## Usage
 
@@ -37,37 +61,39 @@ npm link
 
 ```bash
 # Run the TUI application
-npm start
-# or
-omarchy-theme-tui
+./omarchy-theme-tui
 ```
 
 The TUI provides an interactive interface where you can:
-- Add image paths
+- Browse for images with ASCII preview
 - Select color strategies
 - Choose dark/light mode
 - Toggle rounded corners and transparency
-- Preview generated themes
+- See live desktop mockup preview
 - Export or install themes directly
 
 **Keyboard Shortcuts:**
-- `i` - Add images
+- `i` - Browse for images
 - `s` - Change strategy
-- `m` - Change mode
-- `w` - Change walker size
-- `r` - Regenerate (cycle through hue variations)
+- `m` - Change mode (dark/light/auto)
+- `w` - Walker size
+- `r` - Regenerate (cycle hue variations 1-9)
 - `e` - Export to zip
+- `I` - Install directly to Omarchy
 - `n` - Change theme name
+- `c` - Toggle rounded corners
+- `t` - Toggle transparency
+- `C` - Clear all images
 - `q` / `Esc` - Quit
 
 ### Command Line Mode
 
 ```bash
 # Generate a theme from an image
-omarchy-theme generate /path/to/wallpaper.jpg
+./omarchy-theme-tui generate /path/to/wallpaper.jpg
 
 # With options
-omarchy-theme generate image1.jpg image2.jpg \
+./omarchy-theme-tui generate image1.jpg image2.jpg \
   --name "my-theme" \
   --strategy vibrant \
   --mode dark \
@@ -76,25 +102,10 @@ omarchy-theme generate image1.jpg image2.jpg \
   --walker-size medium
 
 # Install directly to Omarchy
-omarchy-theme generate wallpaper.jpg --install
+./omarchy-theme-tui generate wallpaper.jpg --install
 
 # Preview only (no export)
-omarchy-theme preview wallpaper.jpg --strategy analogous
-```
-
-### Programmatic API
-
-```typescript
-import { processImages } from 'omarchy-theme-tui/color';
-import { generateTheme } from 'omarchy-theme-tui/theme';
-
-const processed = await processImages(['./image.jpg']);
-const theme = generateTheme(processed[0].pixels, 'my-theme', {
-  mode: 'dark',
-  strategy: 'vibrant',
-  rounded_corners: true,
-  transparency: true,
-});
+./omarchy-theme-tui preview wallpaper.jpg --strategy analogous
 ```
 
 ## Color Strategies
@@ -128,6 +139,136 @@ These use classical color theory anchored to the image's dominant hue:
 6. **ANSI Target Hues**: 6 target angles (red 29°, yellow 85°, green 150°, cyan 200°, blue 255°, magenta 325°)
 7. **Bright Variants**: Generated by boosting OKLCH L by 0.08 perceptually
 
+## Installation to Omarchy
+
+After generating a theme:
+
+```bash
+# Method 1: Export to zip, then install
+./omarchy-theme-tui generate wallpaper.jpg -o ~/Downloads/my-theme.zip
+unzip -o ~/Downloads/my-theme.zip -d ~/.config/omarchy/themes/
+omarchy-theme-set "my-theme"
+
+# Method 2: Direct install
+./omarchy-theme-tui generate wallpaper.jpg --install
+omarchy-theme-set "my-theme"
+```
+
+## Building from Source
+
+### Prerequisites
+- [Bun](https://bun.sh) (for building)
+- [Node.js](https://nodejs.org) 20+ (for development)
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd omarchy-theme-tui
+
+# Install dependencies
+npm install --legacy-peer-deps
+
+# Build TypeScript
+npm run build
+
+# Run in development mode
+bun src/index.ts
+```
+
+### Building Binary
+
+```bash
+# Build TypeScript first
+npm run build
+
+# Build standalone binary
+bun build dist/index.ts --compile --outfile omarchy-theme-tui
+
+# Copy required WASM file
+cp node_modules/yoga-wasm-web/dist/yoga.wasm .
+
+# Package for distribution
+tar czf omarchy-theme-tui-linux.tar.gz omarchy-theme-tui yoga.wasm
+```
+
+### Cross-compilation
+
+```bash
+# Build for different platforms
+bun build dist/index.ts --compile --target=bun-linux-x64 --outfile omarchy-theme-tui-linux
+bun build dist/index.ts --compile --target=bun-windows-x64 --outfile omarchy-theme-tui.exe
+bun build dist/index.ts --compile --target=bun-darwin-arm64 --outfile omarchy-theme-tui-macos
+```
+
+## Project Structure
+
+```
+src/
+├── color/              # Color space utilities
+│   ├── oklch.ts       # OKLCH color space implementation
+│   ├── quantization.ts # Color bucket extraction
+│   └── index.ts       # Re-exports
+├── theme/              # Theme generation
+│   ├── strategies.ts   # Color strategy implementations
+│   ├── generator.ts    # Theme generation and export
+│   └── index.ts        # Re-exports
+├── ui/                 # TUI application
+│   └── app.tsx         # Ink-based TUI with modals
+├── utils/              # Utilities
+│   ├── image.ts        # Image processing (jimp - pure JS)
+│   └── export.ts       # Theme export functions
+├── yoga-shim.ts        # WASM embedding for compiled binary
+├── cli.ts              # Command-line interface
+└── index.ts            # Entry point
+
+.github/workflows/      # GitHub Actions
+├── ci.yml             # Build and test on PR/push
+├── nightly.yml        # Nightly builds (unstable)
+└── release.yml        # Stable releases
+```
+
+## Automated Builds
+
+This project uses GitHub Actions to automatically build and release binaries:
+
+### Stable Releases
+- **Trigger**: Git tags (e.g., `v1.2.3`)
+- **Frequency**: Manual, when ready
+- **Quality**: Production-ready, tested
+- **Download**: [Latest Stable](https://github.com/OWNER/REPO/releases/latest)
+
+### Nightly Builds
+- **Trigger**: Every push to `main` + daily at 2 AM UTC
+- **Frequency**: Automatic, continuous
+- **Quality**: Development, may have bugs
+- **Download**: [Nightly Build](https://github.com/OWNER/REPO/releases/tag/nightly)
+
+### Creating a Release
+
+```bash
+# Create stable release
+git tag v1.0.0
+git push origin v1.0.0
+
+# Nightly builds happen automatically on every push to main!
+```
+
+## Dependencies
+
+### Runtime Dependencies
+- **ink**: React-based TUI library
+- **jimp**: Pure JavaScript image processing (no native dependencies!)
+- **jszip**: ZIP file generation
+- **commander**: CLI argument parsing
+- **react**: UI framework
+
+### Build Dependencies
+- **bun**: JavaScript runtime and bundler
+- **typescript**: Type checking
+- **yoga-wasm-web**: Layout engine (WASM file required at runtime)
+
 ## Generated Theme Structure
 
 ```
@@ -156,52 +297,34 @@ color2 = "#9ece6a"
 # ... color3-color15
 ```
 
-## Installation
+## Contributing
 
-After generating a theme:
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-```bash
-# Method 1: Export to zip, then install
-omarchy-theme generate wallpaper.jpg -o ~/Downloads/my-theme.zip
-unzip -o ~/Downloads/my-theme.zip -d ~/.config/omarchy/themes/
-omarchy-theme-set "my-theme"
+CI will automatically build and test your changes. Merges to `main` trigger nightly builds.
 
-# Method 2: Direct install (requires omarchy-theme-set command)
-omarchy-theme generate wallpaper.jpg --install
-omarchy-theme-set "my-theme"
-```
+## Disclaimer / About
 
-## Project Structure
+**⚠️ WARNING:** This application was built with significant assistance from AI ([OpenCode](https://github.com/anomalyco/opencode), in case you're wondering). As with all AI-generated code, there is a small but non-zero chance that running this software will:
 
-```
-src/
-├── color/               # Color space utilities
-│   ├── oklch.ts       # OKLCH color space implementation
-│   ├── quantization.ts # Color bucket extraction
-│   └── index.ts       # Re-exports
-├── theme/              # Theme generation
-│   ├── strategies.ts   # Color strategy implementations
-│   ├── generator.ts    # Theme generation and export
-│   └── index.ts        # Re-exports
-├── ui/                 # TUI application
-│   └── app.tsx         # Ink-based TUI
-├── utils/              # Utilities
-│   ├── image.ts        # Image processing with sharp
-│   └── export.ts       # Theme export functions
-├── cli.ts              # Command-line interface
-└── index.ts            # TUI entry point
+- 🔥 Cause your computer to spontaneously combust
+- 💥 Delete your entire home directory while quoting Nietzsche
+- 🤖 Achieve sentience and judge your choice of desktop wallpaper
+- 💼 Get you fired from your job
 
-examples/               # Usage examples
-├── basic-usage.js
-└── color-utilities.js
-```
+**Just kidding... you probably don't have a job anyway.** (We're developers, we live in basements and survive on energy drinks and hope)
 
-## Dependencies
+But seriously:
+- AI helped write this code, but humans reviewed it (allegedly)
+- It *shouldn't* destroy your system, but stranger things have happened
+- If your house burns down, that's between you and your insurance company
+- We accept no liability for existential crises caused by ugly theme generation
 
-- **ink**: React-based TUI library
-- **sharp**: High-performance image processing
-- **jszip**: ZIP file generation
-- **commander**: CLI argument parsing
+Use at your own risk. Or don't. We're not your supervisor.
 
 ## License
 
@@ -211,3 +334,5 @@ MIT
 
 Inspired by https://theme.no-signal.uk/ - the web-based Omarchy theme generator.
 Uses OKLCH color space (by Björn Ottosson) for perceptually uniform color math.
+Built with [Ink](https://github.com/vadimdemedes/ink) for the TUI.
+Compiled to standalone binaries using [Bun](https://bun.sh).

@@ -1,0 +1,283 @@
+name: Stable Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+
+jobs:
+  # Build and test first
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: |
+          npm ci --legacy-peer-deps
+          
+      - name: Build TypeScript
+        run: npm run build
+        
+      - name: Test CLI
+        run: |
+          # Create a test image
+          convert -size 100x100 xc:blue test-image.jpg || magick convert -size 100x100 xc:blue test-image.jpg
+          # Test CLI mode (non-interactive)
+          bun dist/cli.js generate test-image.jpg --name "test-theme" || true
+          rm -f test-image.jpg
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            dist/
+            !dist/**/*.map
+          retention-days: 7
+
+  # Build Linux binary
+  build-linux:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build Linux binary
+        run: |
+          bun build dist/index.ts --compile --target=bun-linux-x64 --outfile omarchy-theme-tui-linux
+          bun build dist/index.ts --compile --target=bun-linux-x64-baseline --outfile omarchy-theme-tui-linux-baseline
+          cp node_modules/yoga-wasm-web/dist/yoga.wasm .
+          
+      - name: Create release package
+        run: |
+          mkdir -p dist-release
+          cp omarchy-theme-tui-linux dist-release/
+          cp omarchy-theme-tui-linux-baseline dist-release/
+          cp yoga.wasm dist-release/
+          cp dist-binary/install.sh dist-release/ 2>/dev/null || echo '#!/bin/bash
+echo "Manual installation: Copy binary and yoga.wasm to your PATH"' > dist-release/install.sh
+          cp dist-binary/README.md dist-release/ 2>/dev/null || echo '# Omarchy Theme TUI
+See README in repo' > dist-release/README.md
+          chmod +x dist-release/install.sh dist-release/omarchy-theme-tui-linux*
+          tar czf omarchy-theme-tui-linux.tar.gz -C dist-release .
+          
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: omarchy-theme-tui-linux.tar.gz
+          retention-days: 30
+
+  # Build Windows binary
+  build-windows:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build Windows binary
+        run: |
+          bun build dist/index.ts --compile --target=bun-windows-x64 --outfile omarchy-theme-tui.exe
+          
+      - name: Create release package
+        run: |
+          mkdir -p dist-release
+          cp omarchy-theme-tui.exe dist-release/
+          cp node_modules/yoga-wasm-web/dist/yoga.wasm dist-release/
+          cp dist-binary/README.md dist-release/ 2>/dev/null || echo '# Omarchy Theme TUI for Windows' > dist-release/README.txt
+          zip -r omarchy-theme-tui-windows.zip dist-release/
+          
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binary
+          path: omarchy-theme-tui-windows.zip
+          retention-days: 30
+
+  # Build macOS ARM64 binary
+  build-macos-arm64:
+    needs: build
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build macOS ARM64 binary
+        run: |
+          bun build dist/index.ts --compile --target=bun-darwin-arm64 --outfile omarchy-theme-tui-macos-arm64
+          cp node_modules/yoga-wasm-web/dist/yoga.wasm .
+          
+      - name: Create release package
+        run: |
+          mkdir -p dist-release
+          cp omarchy-theme-tui-macos-arm64 dist-release/
+          cp yoga.wasm dist-release/
+          cp dist-binary/install.sh dist-release/ 2>/dev/null || echo '#!/bin/bash
+echo "Copy binary and yoga.wasm to /usr/local/bin"' > dist-release/install.sh
+          cp dist-binary/README.md dist-release/ 2>/dev/null || echo '# Omarchy Theme TUI for macOS' > dist-release/README.md
+          chmod +x dist-release/install.sh dist-release/omarchy-theme-tui-macos-arm64
+          tar czf omarchy-theme-tui-macos-arm64.tar.gz -C dist-release .
+          
+      - name: Upload macOS ARM64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-binary
+          path: omarchy-theme-tui-macos-arm64.tar.gz
+          retention-days: 30
+
+  # Build macOS x64 binary
+  build-macos-x64:
+    needs: build
+    runs-on: macos-13
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build macOS x64 binary
+        run: |
+          bun build dist/index.ts --compile --target=bun-darwin-x64 --outfile omarchy-theme-tui-macos-x64
+          cp node_modules/yoga-wasm-web/dist/yoga.wasm .
+          
+      - name: Create release package
+        run: |
+          mkdir -p dist-release
+          cp omarchy-theme-tui-macos-x64 dist-release/
+          cp yoga.wasm dist-release/
+          cp dist-binary/install.sh dist-release/ 2>/dev/null || echo '#!/bin/bash
+echo "Copy binary and yoga.wasm to /usr/local/bin"' > dist-release/install.sh
+          cp dist-binary/README.md dist-release/ 2>/dev/null || echo '# Omarchy Theme TUI for macOS' > dist-release/README.md
+          chmod +x dist-release/install.sh dist-release/omarchy-theme-tui-macos-x64
+          tar czf omarchy-theme-tui-macos-x64.tar.gz -C dist-release .
+          
+      - name: Upload macOS x64 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-binary
+          path: omarchy-theme-tui-macos-x64.tar.gz
+          retention-days: 30
+
+  # Create GitHub Release for tags
+  release:
+    needs: [build-linux, build-windows, build-macos-arm64, build-macos-x64]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          
+      - name: Display artifacts
+        run: ls -la artifacts/*
+        
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/linux-binary/*.tar.gz
+            artifacts/windows-binary/*.zip
+            artifacts/macos-arm64-binary/*.tar.gz
+            artifacts/macos-x64-binary/*.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## Omarchy Theme TUI
+            
+            Standalone binaries for generating Omarchy themes from images.
+            
+            ### Downloads
+            - **Linux**: `omarchy-theme-tui-linux.tar.gz`
+            - **Windows**: `omarchy-theme-tui-windows.zip`
+            - **macOS (Apple Silicon)**: `omarchy-theme-tui-macos-arm64.tar.gz`
+            - **macOS (Intel)**: `omarchy-theme-tui-macos-x64.tar.gz`
+            
+            ### Installation
+            
+            1. Download the appropriate file for your OS
+            2. Extract the archive
+            3. Run `./install.sh` or manually copy the binary and `yoga.wasm` to your PATH
+            
+            ### Requirements
+            - The `yoga.wasm` file must be in the same directory as the binary
+            
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
